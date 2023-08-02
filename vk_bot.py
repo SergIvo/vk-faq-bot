@@ -17,6 +17,27 @@ def load_faq(filename):
     return list(faq_data.values)
 
 
+def make_ngrams(text, n_length=3):
+    text_length = len(text)
+    start = 0
+    limit = n_length
+    ngrams = []
+    while limit <= text_length:
+        ngrams.append(text[start:limit].lower())
+        start += 1
+        limit += 1
+    return ngrams
+
+
+def calculate_similarity(text_one, text_two):
+    set_one = set(make_ngrams(text_one))
+    set_two = set(make_ngrams(text_two))
+    similar = set_one.intersection(set_two)
+    percentage_one = len(similar) / len(set_one)
+    percentage_two = len(similar) / len(set_two)
+    return percentage_one * percentage_two
+
+
 def reply_to_message(event, vk_api):
     user_message = event.message
     vk_api.messages.send(
