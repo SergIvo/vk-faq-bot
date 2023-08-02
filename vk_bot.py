@@ -13,11 +13,20 @@ logger = logging.getLogger('vk-dialogflow-bot')
 
 def load_faq(filename):
     faq_file = load_workbook(filename=filename)
-    faq_data = wb.worksheets[0]
-    return list(faq_data.values)
+    faq_data = faq_file.worksheets[0]
+    faq = []
+    for row in faq_data.values:
+        faq.append(
+            {
+                'question': row[0],
+                'answer': row[1],
+                'similarity': 0
+            }
+        )
+    return faq
 
 
-def make_ngrams(text, n_length=3):
+def make_ngrams(text, n_length=4):
     text_length = len(text)
     start = 0
     limit = n_length
@@ -38,12 +47,34 @@ def calculate_similarity(text_one, text_two):
     return percentage_one * percentage_two
 
 
-def reply_to_message(event, vk_api):
+def reply_to_message(faq, event, vk_api):
     user_message = event.message
+    for question in faq:
+        question['similarity'] = calculate_similarity(
+            question['question'],
+            user_message
+        )
+    faq = [question for question in faq if question['similarity'] > 0]
+    faq.sort(key=lambda question: question['similarity'], reverse=True)
+    most_relevant = faq[:3]
+
+    if most_relevant:
+        basic_message = '\n'.join(
+            [
+                'Ваш вопрос похож на следующие вопросы.',
+                'Возможно, ответ на один из них вам подойдет?'
+            ]
+        )
+        questions = [
+            f'Вопрос: {question["question"]}\nОтвет: {question["answer"]}' for question in most_relevant
+        ]
+        final_message = basic_message + '\n' + '\n'.join(questions)
+    else:
+        final_message = '''Ваш вопрос передан организаторам, они ответят вам при первой же возможности.'''
     vk_api.messages.send(
         user_id=event.user_id,
-        message=user_message,
-        random_id=random.randint(1,1000)
+        message=final_message,
+        random_id=random.randint(1, 1000)
     )
 
 
@@ -60,7 +91,9 @@ if __name__ == '__main__':
     )
     logger.setLevel(logging.DEBUG)
     logger.addHandler(handler)
-    
+
+    faq = load_faq('faq.xlsx')
+
     vk_session = vk.VkApi(token=vk_group_token)
     vk_api = vk_session.get_api()
     longpoll = VkLongPoll(vk_session)
@@ -70,6 +103,6 @@ if __name__ == '__main__':
         try:
             for event in longpoll.listen():
                 if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-                    reply_to_message(event, vk_api)
+                    reply_to_message(faq, event, vk_api)
         except Exception as ex:
             logger.exception(ex)
