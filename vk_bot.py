@@ -4,9 +4,17 @@ import logging
 import vk_api as vk
 from vk_api.longpoll import VkLongPoll, VkEventType
 from environs import Env
+from openpyxl import load_workbook
+
 from telegram_logging import TgLogsHandler
 
 logger = logging.getLogger('vk-dialogflow-bot')
+
+
+def load_faq(filename):
+    faq_file = load_workbook(filename=filename)
+    faq_data = wb.worksheets[0]
+    return list(faq_data.values)
 
 
 def reply_to_message(event, vk_api):
