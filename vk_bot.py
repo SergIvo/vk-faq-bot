@@ -35,7 +35,10 @@ def make_ngrams(text, n_length=4):
         ngrams.append(text[start:limit].lower())
         start += 1
         limit += 1
-    return ngrams
+    if ngrams:
+        return ngrams
+    else:
+        return [text]
 
 
 def calculate_similarity(text_one, text_two):
